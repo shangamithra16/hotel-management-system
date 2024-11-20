@@ -1,0 +1,349 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.sql.*;
+
+public class Image extends JFrame {
+
+    private static final String url = "jdbc:mysql://localhost:3306/hotel_db";
+    private static final String username = "root";
+    private static final String password = "Vigshan@2116";
+
+    private JTextField guestNameField, roomNumberField, contactNumberField, reservationIdField;
+    private JTextField newGuestNameField, newRoomNumberField, newContactNumberField;
+    private JTextArea outputArea;
+    private Connection connection;
+
+    // ImagePanel to handle the background image
+    class ImagePanel extends JPanel {
+        private java.awt.Image backgroundImage;
+
+        public ImagePanel(String imagePath) {
+            try {
+                backgroundImage = ImageIO.read(new File(imagePath)); // Load the image
+            } catch (IOException e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            // Draw the image to fit the panel
+            g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+        }
+    }
+
+    public Image() {
+        try {
+            connection = DriverManager.getConnection(url, username, password);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Database connection failed", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+
+        setTitle("Hotel Reservation System");
+        setSize(1080, 670);
+        setLocationRelativeTo(null);  // Center the frame on the screen
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        initUI();
+    }
+
+    private void initUI() {
+        // Create a custom panel with background image
+        ImagePanel panel = new ImagePanel("/Users/shangamithra/Downloads/hotel.jpeg");
+        panel.setLayout(new BorderLayout());
+
+        // Create a tabbed pane to organize operations
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        // Create tabs for different operations
+        tabbedPane.addTab("Reserve Room", createReserveRoomTab());
+        tabbedPane.addTab("View Reservations", createViewReservationsTab());
+        tabbedPane.addTab("Update Reservation", createUpdateReservationTab());
+        tabbedPane.addTab("Delete Reservation", createDeleteReservationTab());
+
+        // Add the tabbed pane to the main panel
+        panel.add(tabbedPane, BorderLayout.CENTER);
+
+        // Output Area to show results (set background to nude)
+        outputArea = new JTextArea(8, 7);
+        outputArea.setEditable(false);
+        outputArea.setBackground(new Color(211, 198, 161)); // Nude color for output
+        outputArea.setForeground(Color.BLACK); // Set text color to black for contrast
+        JScrollPane scrollPane = new JScrollPane(outputArea);
+        panel.add(scrollPane, BorderLayout.SOUTH);
+
+        // Add panel to the frame
+        add(panel);
+    }
+
+    // Create Reserve Room Tab
+    private JPanel createReserveRoomTab() {
+        JPanel reservePanel = new JPanel();
+        reservePanel.setLayout(new GridLayout(4, 2));
+
+        JLabel guestNameLabel = new JLabel("                Guest Name:");
+        guestNameLabel.setForeground(new Color(139, 69, 19)); 
+        guestNameLabel.setFont(new Font("Arial", Font.BOLD, 18)); 
+        guestNameField = new JTextField();
+        guestNameField.setBackground(new Color(225, 218, 185));
+
+        JLabel roomNumberLabel = new JLabel("                Room Number:");
+        roomNumberLabel.setForeground(new Color(139, 69, 19)); 
+        roomNumberLabel.setFont(new Font("Arial", Font.BOLD, 18)); 
+        roomNumberField = new JTextField();
+        roomNumberField.setBackground(new Color(225, 218, 185));
+
+        JLabel contactNumberLabel = new JLabel("                Contact Number:");
+        contactNumberLabel.setFont(new Font("Arial", Font.BOLD, 18)); 
+        contactNumberLabel.setForeground(new Color(139, 69, 19));
+        contactNumberField = new JTextField();
+        contactNumberField.setBackground(new Color(225, 218, 185)); 
+
+        JButton reserveButton = new JButton("Reserve Room");
+        reserveButton.setBackground(new Color(139, 69, 19)); 
+        reserveButton.setFont(new Font("Arial", Font.BOLD, 18)); 
+        reserveButton.setForeground(Color.WHITE); 
+        reserveButton.setIcon(new ImageIcon("/Users/shangamithra/Downloads/revr.jpeg")); 
+        reserveButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                reserveRoom();
+            }
+        });
+
+        reservePanel.add(guestNameLabel);
+        reservePanel.add(guestNameField);
+        reservePanel.add(roomNumberLabel);
+        reservePanel.add(roomNumberField);
+        reservePanel.add(contactNumberLabel);
+        reservePanel.add(contactNumberField);
+        reservePanel.add(reserveButton);
+
+        return reservePanel;
+    }
+
+    // Create View Reservations Tab
+    private JPanel createViewReservationsTab() {
+        JPanel viewPanel = new JPanel();
+        viewPanel.setLayout(new BorderLayout());
+        
+
+        JButton viewButton = new JButton("View Reservations📑");
+        viewButton.setIcon(new ImageIcon("/Users/shangamithra/Downloads/bg.jpeg"));
+        viewButton.setForeground(new Color(139, 69, 19)); 
+        viewButton.setFont(new Font("Arial", Font.BOLD, 24));
+        viewButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                viewReservations();
+            }
+        });
+
+        JLabel viewReservationsLabel = new JLabel("Click the button to view reservations");
+        viewReservationsLabel.setForeground(new Color(139, 69, 19)); 
+        viewReservationsLabel.setFont(new Font("Arial", Font.BOLD, 20));
+
+        viewPanel.add(viewReservationsLabel, BorderLayout.NORTH);
+        viewPanel.add(viewButton, BorderLayout.CENTER);
+        return viewPanel;
+    }
+
+    // Create Update Reservation Tab
+    private JPanel createUpdateReservationTab() {
+        JPanel updatePanel = new JPanel();
+        updatePanel.setLayout(new GridLayout(5, 2));
+
+        JLabel reservationIdLabel = new JLabel("                Reservation ID:");
+        reservationIdLabel.setForeground(new Color(139, 69, 19)); 
+        reservationIdLabel.setFont(new Font("Arial", Font.BOLD, 18)); 
+        reservationIdField = new JTextField();
+        reservationIdField.setBackground(new Color(225, 218, 185));  
+
+        JLabel newGuestNameLabel = new JLabel("                New Guest Name:");
+        newGuestNameLabel.setForeground(new Color(139, 69, 19)); 
+        newGuestNameLabel.setFont(new Font("Arial", Font.BOLD, 18)); 
+        newGuestNameField = new JTextField();
+        newGuestNameField.setBackground(new Color(225, 218, 185)); 
+
+        JLabel newRoomNumberLabel = new JLabel("                New Room Number:");
+        newRoomNumberLabel.setForeground(new Color(139, 69, 19)); 
+        newRoomNumberLabel.setFont(new Font("Arial", Font.BOLD, 18)); 
+        newRoomNumberField = new JTextField();
+        newRoomNumberField.setBackground(new Color(225, 218, 185));  
+
+        JLabel newContactNumberLabel = new JLabel("                New Contact Number:");
+        newContactNumberLabel.setForeground(new Color(139, 69, 19)); 
+        newContactNumberLabel.setFont(new Font("Arial", Font.BOLD, 18)); 
+        newContactNumberField = new JTextField();
+        newContactNumberField.setBackground(new Color(225, 218, 185));  
+
+        JButton updateButton = new JButton("Update Reservation");
+        updateButton.setForeground(new Color(139, 69, 19)); 
+        updateButton.setFont(new Font("Arial", Font.BOLD, 18)); 
+        updateButton.setIcon(new ImageIcon("/Users/shangamithra/Downloads/ho.jpeg")); 
+        updateButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String reservationId = reservationIdField.getText().trim();
+                String newGuestName = newGuestNameField.getText().trim();
+                String newRoomNumber = newRoomNumberField.getText().trim();
+                String newContactNumber = newContactNumberField.getText().trim();
+
+                if (reservationId.isEmpty() || newGuestName.isEmpty() || newRoomNumber.isEmpty() || newContactNumber.isEmpty()) {
+                    outputArea.setText("Please fill all fields");
+                } else {
+                    updateReservation(reservationId, newGuestName, newRoomNumber, newContactNumber);
+                }
+            }
+        });
+
+        updatePanel.add(reservationIdLabel);
+        updatePanel.add(reservationIdField);
+        updatePanel.add(newGuestNameLabel);
+        updatePanel.add(newGuestNameField);
+        updatePanel.add(newRoomNumberLabel);
+        updatePanel.add(newRoomNumberField);
+        updatePanel.add(newContactNumberLabel);
+        updatePanel.add(newContactNumberField);
+        updatePanel.add(updateButton);
+
+        return updatePanel;
+    }
+
+    // Create Delete Reservation Tab
+    private JPanel createDeleteReservationTab() {
+        JPanel deletePanel = new JPanel();
+        deletePanel.setLayout(new BorderLayout());
+
+        JButton deleteButton = new JButton("Delete Reservation");
+        deleteButton.setFont(new Font("Arial", Font.BOLD, 24)); 
+        deleteButton.setForeground(new Color(139, 69, 19)); 
+        deleteButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deleteReservation();
+            }
+        });
+
+        deletePanel.add(deleteButton, BorderLayout.CENTER);
+        return deletePanel;
+    }
+
+    // Method to Reserve Room
+    private void reserveRoom() {
+        String guestName = guestNameField.getText().trim();
+        String roomNumber = roomNumberField.getText().trim();
+        String contactNumber = contactNumberField.getText().trim();
+
+        if (guestName.isEmpty() || roomNumber.isEmpty() || contactNumber.isEmpty()) {
+            outputArea.setText("Please fill all fields.");
+            return;
+        }
+
+        try {
+            // Check if the room number is already reserved
+            String checkRoomSQL = "SELECT * FROM reservations WHERE room_number = ?";
+            PreparedStatement checkStmt = connection.prepareStatement(checkRoomSQL);
+            checkStmt.setString(1, roomNumber);
+            ResultSet rs = checkStmt.executeQuery();
+
+            if (rs.next()) {
+                outputArea.setText("Error: Room " + roomNumber + " is already reserved.");
+                return;
+            }
+
+            // If the room is not already reserved, proceed to insert the reservation
+            String sql = "INSERT INTO reservations (guest_name, room_number, comtact_number) VALUES (?, ?, ?)";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setString(1, guestName);
+            stmt.setString(2, roomNumber);
+            stmt.setString(3, contactNumber);
+            stmt.executeUpdate();
+            outputArea.setText("Room reserved successfully.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            outputArea.setText("Error while reserving room.");
+        }
+    }
+
+    // Method to View Reservations
+    private void viewReservations() {
+        try {
+            String sql = "SELECT * FROM reservations";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+
+            StringBuilder sb = new StringBuilder();
+            while (rs.next()) {
+                sb.append("Reservation ID: ").append(rs.getInt("reservation_id"))
+                        .append(", Guest Name: ").append(rs.getString("guest_name"))
+                        .append(", Room Number: ").append(rs.getString("room_number"))
+                        .append(", Contact Number: ").append(rs.getString("comtact_number"))
+                        .append("\n");
+            }
+            outputArea.setText(sb.toString());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            outputArea.setText("Error while fetching reservations.");
+        }
+    }
+
+    // Method to Update Reservation
+    private void updateReservation(String reservationId, String newGuestName, String newRoomNumber, String newContactNumber) {
+        try {
+            String sql = "UPDATE reservations SET guest_name = ?, room_number = ?, comtact_number = ? WHERE reservation_id = ?";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setString(1, newGuestName);
+            stmt.setString(2, newRoomNumber);
+            stmt.setString(3, newContactNumber);
+            stmt.setInt(4, Integer.parseInt(reservationId));
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                outputArea.setText("Reservation updated successfully.");
+            } else {
+                outputArea.setText("No reservation found with the given ID.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            outputArea.setText("Error while updating reservation.");
+        }
+    }
+
+    // Method to Delete Reservation
+    private void deleteReservation() {
+        String reservationId = JOptionPane.showInputDialog(this, "Enter Reservation ID to delete:");
+        if (reservationId != null && !reservationId.trim().isEmpty()) {
+            try {
+                String sql = "DELETE FROM reservations WHERE reservation_id = ?";
+                PreparedStatement stmt = connection.prepareStatement(sql);
+                stmt.setInt(1, Integer.parseInt(reservationId));
+                int rowsAffected = stmt.executeUpdate();
+
+                if (rowsAffected > 0) {
+                    outputArea.setText("Reservation deleted successfully.");
+                } else {
+                    outputArea.setText("No reservation found with the given ID.");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                outputArea.setText("Error while deleting reservation.");
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new Image().setVisible(true);
+            }
+        });
+    }
+}
